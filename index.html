@@ -458,6 +458,7 @@
             font-family: 'Space Mono', monospace;
         }
 
+        /* Default fallback colors by transport type */
         .line-badge.bus {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
@@ -473,6 +474,35 @@
         .line-badge.other {
             background: linear-gradient(135deg, #636e72 0%, #b2bec3 100%);
         }
+
+        /* TPG Official line colors (from tpg.ch) */
+        /* Trams */
+        .line-badge.line-12 { background: #F5A300; color: #000; }
+        .line-badge.line-14 { background: #5A1E82; }
+        .line-badge.line-15 { background: #84471C; }
+        .line-badge.line-17 { background: #00ACE7; color: #000; }
+        .line-badge.line-18 { background: #B82F89; }
+
+        /* Trolleybus */
+        .line-badge.line-2 { background: #D2DB4A; color: #000; }
+        .line-badge.line-3 { background: #B82F89; }
+        .line-badge.line-6 { background: #008CBE; }
+        .line-badge.line-7 { background: #00A828; }
+        .line-badge.line-10 { background: #006E3D; }
+        .line-badge.line-19 { background: #A05909; }
+
+        /* Main buses */
+        .line-badge.line-1 { background: #5A1E82; }
+        .line-badge.line-5 { background: #00ACE7; color: #000; }
+        .line-badge.line-8 { background: #00A828; }
+        .line-badge.line-9 { background: #00A828; }
+        .line-badge.line-11 { background: #82419E; }
+        .line-badge.line-20 { background: #00A828; }
+        .line-badge.line-21 { background: #78003C; }
+        .line-badge.line-22 { background: #5A1E82; }
+        .line-badge.line-23 { background: #B82F89; }
+        .line-badge.line-25 { background: #A05909; }
+        .line-badge.line-28 { background: #82419E; }
 
         .transport-type-icon {
             font-size: 1.1rem;
@@ -1591,7 +1621,8 @@
             item.appendChild(typeIcon);
 
             // Line badge with type-specific color
-            const badge = createElement('div', ['line-badge', departure.type], departure.line);
+            const lineClass = `line-${departure.line}`;
+            const badge = createElement('div', ['line-badge', departure.type, lineClass], departure.line);
             item.appendChild(badge);
 
             const info = createElement('div', ['departure-info']);
@@ -1743,7 +1774,8 @@
 
                     const info = createElement('div', ['delayed-line-info']);
 
-                    const badge = createElement('div', ['delayed-line-badge', `line-badge`, dep.type], dep.line);
+                    const lineClass = `line-${dep.line}`;
+                    const badge = createElement('div', ['delayed-line-badge', 'line-badge', dep.type, lineClass], dep.line);
                     info.appendChild(badge);
 
                     const destination = createElement('span', ['delayed-line-destination'], dep.destination);
