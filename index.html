@@ -497,6 +497,13 @@
             letter-spacing: 0.05em;
         }
 
+        .departure-platform {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
         .departure-time {
             text-align: right;
         }
@@ -614,6 +621,144 @@
             color: var(--text-muted);
             margin-top: 1rem;
             text-align: center;
+        }
+
+        /* Delay styles */
+        .departure-type-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .delay-badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            font-family: 'Space Mono', monospace;
+            padding: 0.15rem 0.4rem;
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border-radius: var(--radius-sm);
+            animation: delayPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes delayPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .departure-item.delayed {
+            border-left: 3px solid #ef4444;
+        }
+
+        /* Delays Card */
+        .delays-card {
+            grid-column: 2;
+            grid-row: 3;
+        }
+
+        .card-icon.delays {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .delays-summary {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .delays-stats {
+            display: flex;
+            gap: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .delay-stat {
+            flex: 1;
+            text-align: center;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: var(--radius-md);
+        }
+
+        .delay-stat-value {
+            font-family: 'Space Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .delay-stat-value.good { color: #22c55e; }
+        .delay-stat-value.warning { color: #f59e0b; }
+        .delay-stat-value.bad { color: #ef4444; }
+
+        .delay-stat-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 0.25rem;
+        }
+
+        .delayed-lines {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .delayed-line-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            background: rgba(239, 68, 68, 0.08);
+            border-radius: var(--radius-md);
+            border-left: 3px solid #ef4444;
+        }
+
+        .delayed-line-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .delayed-line-badge {
+            min-width: 40px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            font-size: 0.8rem;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .delayed-line-destination {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .delayed-line-delay {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #ef4444;
+        }
+
+        .no-delays {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+        }
+
+        .no-delays .icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .no-delays .message {
+            font-size: 0.9rem;
+            color: #22c55e;
         }
 
         /* Globe Card */
@@ -797,7 +942,9 @@
             }
 
             .weather-main,
-            .transport-card {
+            .transport-card,
+            .exchange-card,
+            .delays-card {
                 grid-column: 1;
                 grid-row: auto;
             }
@@ -910,6 +1057,23 @@
                     <div class="loading-container">
                         <div class="loading-spinner"></div>
                         <div class="loading-text">Chargement des taux...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Delays Card -->
+            <section class="card delays-card" id="delaysCard">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon delays">⚠️</div>
+                        Perturbations
+                    </div>
+                </div>
+
+                <div id="delaysContent">
+                    <div class="loading-container">
+                        <div class="loading-spinner"></div>
+                        <div class="loading-text">Analyse des retards...</div>
                     </div>
                 </div>
             </section>
@@ -1299,6 +1463,10 @@
                         const diffMs = depTime - now;
                         const diffMins = Math.max(0, Math.round(diffMs / 60000));
 
+                        // Get delay and platform information from API
+                        const delay = journey.stop.delay || 0;
+                        const platform = journey.stop.platform || null;
+
                         const category = (journey.category || '').toUpperCase();
 
                         // Determine transport type
@@ -1316,7 +1484,9 @@
                             destination: journey.to || 'Direction inconnue',
                             minutes: diffMins,
                             category: category,
-                            type: type
+                            type: type,
+                            delay: delay,
+                            platform: platform
                         });
                     });
                 }
@@ -1331,6 +1501,9 @@
                 // Sort by departure time and show up to 8 departures
                 allDepartures.sort((a, b) => a.minutes - b.minutes);
                 renderTransportCard(container, stop, allDepartures.slice(0, 8));
+
+                // Render delays card with all departures
+                renderDelaysCard(allDepartures);
 
             } catch (error) {
                 console.error('Transport error:', error);
@@ -1408,8 +1581,10 @@
 
         function createDepartureItem(departure) {
             const isImminent = departure.minutes <= 3;
+            const hasDelay = departure.delay && departure.delay > 0;
 
             const item = createElement('div', ['departure-item']);
+            if (hasDelay) item.classList.add('delayed');
 
             // Transport type icon
             const typeIcon = createElement('span', ['transport-type-icon'], getTransportIcon(departure.type));
@@ -1423,9 +1598,27 @@
             const dest = createElement('div', ['departure-destination'], departure.destination);
             info.appendChild(dest);
 
-            const typeLabel = createElement('div', ['departure-type']);
-            typeLabel.textContent = departure.category || departure.type.toUpperCase();
-            info.appendChild(typeLabel);
+            const typeLabelContainer = createElement('div', ['departure-type-container']);
+
+            // Show platform if available
+            if (departure.platform) {
+                const platformLabel = createElement('span', ['departure-platform']);
+                platformLabel.textContent = `Voie ${departure.platform}`;
+                typeLabelContainer.appendChild(platformLabel);
+            } else {
+                const typeLabel = createElement('span', ['departure-type']);
+                typeLabel.textContent = departure.category || departure.type.toUpperCase();
+                typeLabelContainer.appendChild(typeLabel);
+            }
+
+            // Add delay badge if delayed
+            if (hasDelay) {
+                const delayBadge = createElement('span', ['delay-badge']);
+                delayBadge.textContent = `+${departure.delay}'`;
+                typeLabelContainer.appendChild(delayBadge);
+            }
+
+            info.appendChild(typeLabelContainer);
             item.appendChild(info);
 
             const timeDiv = createElement('div', ['departure-time']);
@@ -1454,6 +1647,139 @@
             retryBtn.addEventListener('click', fetchTransport);
             errorContainer.appendChild(retryBtn);
 
+            container.appendChild(errorContainer);
+
+            // Also show error on delays card
+            renderDelaysError();
+        }
+
+        // ============================================
+        // DELAYS CARD
+        // ============================================
+
+        function renderDelaysCard(departures) {
+            const container = document.getElementById('delaysContent');
+            clearElement(container);
+
+            // Filter delayed departures
+            const delayedDepartures = departures.filter(d => d.delay && d.delay > 0);
+
+            // Calculate statistics
+            const totalDepartures = departures.length;
+            const delayedCount = delayedDepartures.length;
+            const onTimePercentage = totalDepartures > 0
+                ? Math.round(((totalDepartures - delayedCount) / totalDepartures) * 100)
+                : 100;
+            const avgDelay = delayedCount > 0
+                ? Math.round(delayedDepartures.reduce((sum, d) => sum + d.delay, 0) / delayedCount)
+                : 0;
+
+            const summary = createElement('div', ['delays-summary']);
+
+            // Stats section
+            const stats = createElement('div', ['delays-stats']);
+
+            // On-time percentage
+            const onTimeStat = createElement('div', ['delay-stat']);
+            const onTimeValue = createElement('div', ['delay-stat-value']);
+            onTimeValue.textContent = `${onTimePercentage}%`;
+            if (onTimePercentage >= 90) {
+                onTimeValue.classList.add('good');
+            } else if (onTimePercentage >= 70) {
+                onTimeValue.classList.add('warning');
+            } else {
+                onTimeValue.classList.add('bad');
+            }
+            onTimeStat.appendChild(onTimeValue);
+            const onTimeLabel = createElement('div', ['delay-stat-label'], 'À l\'heure');
+            onTimeStat.appendChild(onTimeLabel);
+            stats.appendChild(onTimeStat);
+
+            // Delayed count
+            const delayedStat = createElement('div', ['delay-stat']);
+            const delayedValue = createElement('div', ['delay-stat-value']);
+            delayedValue.textContent = delayedCount.toString();
+            if (delayedCount === 0) {
+                delayedValue.classList.add('good');
+            } else if (delayedCount <= 2) {
+                delayedValue.classList.add('warning');
+            } else {
+                delayedValue.classList.add('bad');
+            }
+            delayedStat.appendChild(delayedValue);
+            const delayedLabel = createElement('div', ['delay-stat-label'], 'Retards');
+            delayedStat.appendChild(delayedLabel);
+            stats.appendChild(delayedStat);
+
+            // Average delay
+            const avgStat = createElement('div', ['delay-stat']);
+            const avgValue = createElement('div', ['delay-stat-value']);
+            avgValue.textContent = avgDelay > 0 ? `${avgDelay}'` : '-';
+            if (avgDelay === 0) {
+                avgValue.classList.add('good');
+            } else if (avgDelay <= 3) {
+                avgValue.classList.add('warning');
+            } else {
+                avgValue.classList.add('bad');
+            }
+            avgStat.appendChild(avgValue);
+            const avgLabel = createElement('div', ['delay-stat-label'], 'Moy. retard');
+            avgStat.appendChild(avgLabel);
+            stats.appendChild(avgStat);
+
+            summary.appendChild(stats);
+
+            // Delayed lines list
+            if (delayedDepartures.length > 0) {
+                const delayedLines = createElement('div', ['delayed-lines']);
+
+                // Sort by delay (highest first) and limit to 5
+                const sortedDelayed = [...delayedDepartures]
+                    .sort((a, b) => b.delay - a.delay)
+                    .slice(0, 5);
+
+                sortedDelayed.forEach(dep => {
+                    const item = createElement('div', ['delayed-line-item']);
+
+                    const info = createElement('div', ['delayed-line-info']);
+
+                    const badge = createElement('div', ['delayed-line-badge', `line-badge`, dep.type], dep.line);
+                    info.appendChild(badge);
+
+                    const destination = createElement('span', ['delayed-line-destination'], dep.destination);
+                    info.appendChild(destination);
+
+                    item.appendChild(info);
+
+                    const delayText = createElement('span', ['delayed-line-delay'], `+${dep.delay}'`);
+                    item.appendChild(delayText);
+
+                    delayedLines.appendChild(item);
+                });
+
+                summary.appendChild(delayedLines);
+            } else {
+                // No delays message
+                const noDelays = createElement('div', ['no-delays']);
+                const icon = createElement('div', ['icon'], '✅');
+                noDelays.appendChild(icon);
+                const message = createElement('div', ['message'], 'Aucun retard signalé');
+                noDelays.appendChild(message);
+                summary.appendChild(noDelays);
+            }
+
+            container.appendChild(summary);
+        }
+
+        function renderDelaysError() {
+            const container = document.getElementById('delaysContent');
+            clearElement(container);
+
+            const errorContainer = createElement('div', ['error-container']);
+            const errorIcon = createElement('div', ['error-icon'], '⚠️');
+            errorContainer.appendChild(errorIcon);
+            const errorMsg = createElement('p', ['error-message'], 'Données indisponibles');
+            errorContainer.appendChild(errorMsg);
             container.appendChild(errorContainer);
         }
 
