@@ -1,0 +1,1910 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Mode TV</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: rgba(255, 255, 255, 0.03);
+            --bg-card-hover: rgba(255, 255, 255, 0.06);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --text-muted: rgba(255, 255, 255, 0.35);
+            --accent-warm: #ff6b35;
+            --accent-cool: #4ecdc4;
+            --accent-purple: #a855f7;
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --gradient-warm: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+            --gradient-cool: linear-gradient(135deg, #4ecdc4 0%, #44a8b3 100%);
+            --gradient-mesh:
+                radial-gradient(at 20% 80%, rgba(78, 205, 196, 0.15) 0%, transparent 50%),
+                radial-gradient(at 80% 20%, rgba(255, 107, 53, 0.12) 0%, transparent 50%),
+                radial-gradient(at 50% 50%, rgba(168, 85, 247, 0.08) 0%, transparent 60%);
+            --shadow-glow: 0 0 60px rgba(78, 205, 196, 0.15);
+            --radius-sm: 8px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --radius-xl: 32px;
+            --ticker-height: 48px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            font-size: 16px;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        .background-layer {
+            position: fixed;
+            inset: 0;
+            background: var(--gradient-mesh);
+            z-index: -2;
+            animation: meshFloat 20s ease-in-out infinite;
+        }
+
+        @keyframes meshFloat {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.1) rotate(2deg); }
+        }
+
+        .noise-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+
+        /* TV Layout Container */
+        .tv-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top Bar with Clock */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-subtle);
+            flex-shrink: 0;
+        }
+
+        .top-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--gradient-warm);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .logo-text {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .location-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: var(--radius-lg);
+        }
+
+        .location-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-cool);
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        .location-text {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .location-name {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .clock-display {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .clock-date {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            text-transform: capitalize;
+        }
+
+        .clock-time {
+            font-family: 'Space Mono', monospace;
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: var(--gradient-warm);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Main Content - Horizontal Split */
+        .main-content {
+            flex: 1;
+            display: flex;
+            gap: 1.5rem;
+            padding: 1.5rem 2rem;
+            min-height: 0;
+        }
+
+        /* Left Column (40%) - Weather + Globe */
+        .left-column {
+            width: 40%;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        /* Right Column (60%) - Transport + Delays */
+        .right-column {
+            width: 60%;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-xl);
+            backdrop-filter: blur(20px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: fadeSlideUp 0.8s ease-out backwards;
+        }
+
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-subtle);
+            flex-shrink: 0;
+        }
+
+        .card-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-secondary);
+        }
+
+        .card-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        .card-icon.weather { background: var(--gradient-warm); }
+        .card-icon.transport { background: var(--gradient-cool); }
+        .card-icon.exchange { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+        .card-icon.delays { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+        .card-icon.globe { background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%); }
+
+        .card-content {
+            flex: 1;
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Weather Card - TV */
+        .weather-card {
+            flex: 0 0 auto;
+            animation-delay: 0.1s;
+        }
+
+        .weather-main {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .weather-icon-large {
+            font-size: 5rem;
+            line-height: 1;
+            filter: drop-shadow(0 10px 30px rgba(255, 107, 53, 0.3));
+            animation: float 4s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .weather-info {
+            flex: 1;
+        }
+
+        .temperature {
+            font-size: 4rem;
+            font-weight: 300;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            background: var(--gradient-warm);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .temperature-unit {
+            font-size: 1.5rem;
+            font-weight: 400;
+        }
+
+        .weather-description {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+            text-transform: capitalize;
+        }
+
+        .weather-details {
+            display: flex;
+            gap: 1rem;
+            margin-left: auto;
+        }
+
+        .weather-detail {
+            text-align: center;
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: var(--radius-md);
+        }
+
+        .detail-icon {
+            font-size: 1.25rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .detail-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .detail-label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        /* Globe Card - TV */
+        .globe-card {
+            flex: 1;
+            min-height: 200px;
+            position: relative;
+            animation-delay: 0.2s;
+        }
+
+        .globe-card .card-content {
+            padding: 0;
+            position: relative;
+        }
+
+        #globeContainer {
+            position: absolute;
+            inset: 0;
+            cursor: grab;
+        }
+
+        #globeContainer:active {
+            cursor: grabbing;
+        }
+
+        .globe-loading {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            z-index: 5;
+            background: var(--bg-card);
+            transition: opacity 0.5s ease;
+        }
+
+        .globe-loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .globe-info {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+            right: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .sun-info, .location-marker-info {
+            padding: 0.4rem 0.75rem;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: var(--radius-md);
+            backdrop-filter: blur(10px);
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .location-marker-info {
+            background: rgba(78, 205, 196, 0.2);
+            border: 1px solid var(--accent-cool);
+            color: var(--accent-cool);
+        }
+
+        /* Transport Card - TV */
+        .transport-card {
+            flex: 1;
+            animation-delay: 0.3s;
+        }
+
+        .stop-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-shrink: 0;
+        }
+
+        .stop-distance {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.8rem;
+            padding: 0.25rem 0.75rem;
+            background: rgba(78, 205, 196, 0.15);
+            color: var(--accent-cool);
+            border-radius: var(--radius-sm);
+        }
+
+        .stop-name {
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .departures-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .departure-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: var(--radius-md);
+            border: 1px solid transparent;
+        }
+
+        .departure-item.delayed {
+            border-left: 3px solid #ef4444;
+        }
+
+        .transport-type-icon {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .line-badge {
+            min-width: 44px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            font-size: 0.85rem;
+            font-family: 'Space Mono', monospace;
+        }
+
+        /* Line colors */
+        .line-badge.bus { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .line-badge.tram { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .line-badge.train { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+        .line-badge.other { background: linear-gradient(135deg, #636e72 0%, #b2bec3 100%); }
+
+        /* TPG Official line colors */
+        .line-badge.line-12 { background: #F5A300; color: #000; }
+        .line-badge.line-14 { background: #5A1E82; }
+        .line-badge.line-15 { background: #84471C; }
+        .line-badge.line-17 { background: #00ACE7; color: #000; }
+        .line-badge.line-18 { background: #B82F89; }
+        .line-badge.line-2 { background: #D2DB4A; color: #000; }
+        .line-badge.line-3 { background: #B82F89; }
+        .line-badge.line-6 { background: #008CBE; }
+        .line-badge.line-7 { background: #00A828; }
+        .line-badge.line-10 { background: #006E3D; }
+        .line-badge.line-19 { background: #A05909; }
+        .line-badge.line-1 { background: #5A1E82; }
+        .line-badge.line-5 { background: #00ACE7; color: #000; }
+        .line-badge.line-8 { background: #00A828; }
+        .line-badge.line-9 { background: #00A828; }
+        .line-badge.line-11 { background: #82419E; }
+        .line-badge.line-20 { background: #00A828; }
+        .line-badge.line-21 { background: #78003C; }
+        .line-badge.line-22 { background: #5A1E82; }
+        .line-badge.line-23 { background: #B82F89; }
+        .line-badge.line-25 { background: #A05909; }
+        .line-badge.line-28 { background: #82419E; }
+
+        .departure-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .departure-destination {
+            font-size: 0.9rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .departure-type-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .departure-type, .departure-platform {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .delay-badge {
+            font-size: 0.65rem;
+            font-weight: 600;
+            font-family: 'Space Mono', monospace;
+            padding: 0.1rem 0.3rem;
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border-radius: var(--radius-sm);
+        }
+
+        .departure-time {
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .time-value {
+            font-family: 'Space Mono', monospace;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .time-value.imminent {
+            color: var(--accent-warm);
+            animation: blink 1s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .time-label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        /* Delays & Exchange Row */
+        .bottom-row {
+            display: flex;
+            gap: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .delays-card, .exchange-card {
+            flex: 1;
+        }
+
+        .delays-card {
+            animation-delay: 0.4s;
+        }
+
+        .exchange-card {
+            animation-delay: 0.5s;
+        }
+
+        /* Delays Card - TV */
+        .delays-summary {
+            display: flex;
+            gap: 1.5rem;
+            align-items: flex-start;
+        }
+
+        .delays-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .delay-stat {
+            text-align: center;
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: var(--radius-md);
+        }
+
+        .delay-stat-value {
+            font-family: 'Space Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .delay-stat-value.good { color: #22c55e; }
+        .delay-stat-value.warning { color: #f59e0b; }
+        .delay-stat-value.bad { color: #ef4444; }
+
+        .delay-stat-label {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .delayed-lines {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .delayed-line-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 0.75rem;
+            background: rgba(239, 68, 68, 0.08);
+            border-radius: var(--radius-md);
+            border-left: 3px solid #ef4444;
+        }
+
+        .delayed-line-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .delayed-line-badge {
+            min-width: 36px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            font-size: 0.7rem;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .delayed-line-destination {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 150px;
+        }
+
+        .delayed-line-delay {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #ef4444;
+        }
+
+        .no-delays {
+            text-align: center;
+            padding: 1rem;
+            color: var(--text-muted);
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .no-delays .icon { font-size: 1.5rem; }
+        .no-delays .message { font-size: 0.85rem; color: #22c55e; }
+
+        /* Exchange Card - TV */
+        .exchange-rates {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .exchange-rate-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.75rem;
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .exchange-currency {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .currency-flag { font-size: 1.25rem; }
+        .currency-code { font-weight: 600; font-size: 0.9rem; }
+
+        .exchange-values {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .exchange-value {
+            text-align: center;
+        }
+
+        .rate-value {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .rate-label {
+            font-size: 0.55rem;
+            color: var(--text-muted);
+        }
+
+        /* Bottom Ticker */
+        .ticker-bar {
+            height: var(--ticker-height);
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .ticker-label {
+            padding: 0 1.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--accent-cool);
+            background: rgba(78, 205, 196, 0.1);
+            height: 100%;
+            display: flex;
+            align-items: center;
+            border-right: 1px solid var(--border-subtle);
+            flex-shrink: 0;
+        }
+
+        .ticker-content {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .ticker-scroll {
+            display: flex;
+            gap: 4rem;
+            animation: tickerScroll 30s linear infinite;
+            white-space: nowrap;
+        }
+
+        @keyframes tickerScroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        .ticker-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.85rem;
+        }
+
+        .ticker-item .line-badge {
+            min-width: 36px;
+            height: 22px;
+            font-size: 0.7rem;
+        }
+
+        .ticker-destination {
+            color: var(--text-secondary);
+        }
+
+        .ticker-time {
+            font-family: 'Space Mono', monospace;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .ticker-delay {
+            color: #ef4444;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.75rem;
+        }
+
+        /* Loading/Error States */
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            gap: 0.75rem;
+        }
+
+        .loading-spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid var(--border-subtle);
+            border-top-color: var(--accent-cool);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .error-container {
+            text-align: center;
+            padding: 1.5rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .error-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+        .error-message { color: var(--text-secondary); margin-bottom: 0.5rem; font-size: 0.85rem; }
+
+        .retry-button {
+            padding: 0.5rem 1rem;
+            background: var(--gradient-cool);
+            border: none;
+            border-radius: var(--radius-md);
+            color: var(--bg-primary);
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .empty-departures {
+            text-align: center;
+            padding: 1.5rem;
+            color: var(--text-muted);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .empty-departures .icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.5;
+        }
+
+        /* Responsive - Mobile Fallback */
+        @media (max-width: 1200px) {
+            .main-content {
+                flex-direction: column;
+            }
+
+            .left-column, .right-column {
+                width: 100%;
+            }
+
+            .departures-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .tv-container {
+                height: auto;
+                min-height: 100vh;
+                overflow-y: auto;
+            }
+
+            .top-bar {
+                flex-direction: column;
+                gap: 1rem;
+                padding: 1rem;
+            }
+
+            .main-content {
+                padding: 1rem;
+            }
+
+            .bottom-row {
+                flex-direction: column;
+            }
+
+            .clock-time {
+                font-size: 2rem;
+            }
+
+            .weather-main {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .weather-details {
+                margin-left: 0;
+                justify-content: center;
+            }
+
+            .ticker-bar {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="background-layer"></div>
+    <div class="noise-overlay"></div>
+
+    <div class="tv-container">
+        <!-- Top Bar -->
+        <header class="top-bar">
+            <div class="top-left">
+                <div class="logo">
+                    <div class="logo-icon">Q</div>
+                    <div class="logo-text">Dashboard</div>
+                </div>
+                <div class="location-info">
+                    <div class="location-dot"></div>
+                    <div class="location-text">
+                        <span id="locationName" class="location-name">Localisation...</span>
+                        <span id="locationCountry"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="clock-display">
+                <div class="clock-date" id="currentDate">--</div>
+                <div class="clock-time" id="currentTime">--:--:--</div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Left Column -->
+            <div class="left-column">
+                <!-- Weather Card -->
+                <section class="card weather-card" id="weatherCard">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <div class="card-icon weather">☀️</div>
+                            Météo actuelle
+                        </div>
+                    </div>
+                    <div class="card-content" id="weatherContent">
+                        <div class="loading-container">
+                            <div class="loading-spinner"></div>
+                            <div class="loading-text">Chargement...</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Globe Card -->
+                <section class="card globe-card" id="globeCard">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <div class="card-icon globe">🌍</div>
+                            Votre Position
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <div id="globeContainer"></div>
+                        <div class="globe-loading" id="globeLoading">
+                            <div class="loading-spinner"></div>
+                            <div class="loading-text">Globe...</div>
+                        </div>
+                        <div class="globe-info">
+                            <div class="sun-info">
+                                <span id="sunIcon">☀️</span>
+                                <span id="sunPosition">--</span>
+                            </div>
+                            <div class="location-marker-info">
+                                <span>📍</span>
+                                <span id="globeCoords">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right Column -->
+            <div class="right-column">
+                <!-- Transport Card -->
+                <section class="card transport-card" id="transportCard">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <div class="card-icon transport">🚏</div>
+                            Prochains Départs
+                        </div>
+                    </div>
+                    <div class="card-content" id="transportContent">
+                        <div class="loading-container">
+                            <div class="loading-spinner"></div>
+                            <div class="loading-text">Recherche des arrêts...</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Delays & Exchange Row -->
+                <div class="bottom-row">
+                    <!-- Delays Card -->
+                    <section class="card delays-card" id="delaysCard">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <div class="card-icon delays">⚠️</div>
+                                Perturbations
+                            </div>
+                        </div>
+                        <div class="card-content" id="delaysContent">
+                            <div class="loading-container">
+                                <div class="loading-spinner"></div>
+                                <div class="loading-text">Analyse...</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Exchange Card -->
+                    <section class="card exchange-card" id="exchangeCard">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <div class="card-icon exchange">💱</div>
+                                Taux CHF
+                            </div>
+                        </div>
+                        <div class="card-content" id="exchangeContent">
+                            <div class="loading-container">
+                                <div class="loading-spinner"></div>
+                                <div class="loading-text">Chargement...</div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+
+        <!-- Bottom Ticker -->
+        <div class="ticker-bar">
+            <div class="ticker-label">Départs</div>
+            <div class="ticker-content">
+                <div class="ticker-scroll" id="tickerScroll">
+                    <!-- Filled by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const CONFIG = {
+            refreshInterval: 60000
+        };
+
+        // State
+        let currentPosition = null;
+        let allDeparturesGlobal = [];
+
+        // WMO Weather codes
+        const wmoIcons = {
+            0: { day: '☀️', night: '🌙', desc: 'Ciel dégagé' },
+            1: { day: '🌤️', night: '🌙', desc: 'Principalement dégagé' },
+            2: { day: '⛅', night: '☁️', desc: 'Partiellement nuageux' },
+            3: { day: '☁️', night: '☁️', desc: 'Couvert' },
+            45: { day: '🌫️', night: '🌫️', desc: 'Brouillard' },
+            48: { day: '🌫️', night: '🌫️', desc: 'Brouillard givrant' },
+            51: { day: '🌧️', night: '🌧️', desc: 'Bruine légère' },
+            53: { day: '🌧️', night: '🌧️', desc: 'Bruine modérée' },
+            55: { day: '🌧️', night: '🌧️', desc: 'Bruine dense' },
+            61: { day: '🌦️', night: '🌧️', desc: 'Pluie légère' },
+            63: { day: '🌧️', night: '🌧️', desc: 'Pluie modérée' },
+            65: { day: '🌧️', night: '🌧️', desc: 'Pluie forte' },
+            71: { day: '🌨️', night: '🌨️', desc: 'Neige légère' },
+            73: { day: '🌨️', night: '🌨️', desc: 'Neige modérée' },
+            75: { day: '❄️', night: '❄️', desc: 'Neige forte' },
+            80: { day: '🌦️', night: '🌧️', desc: 'Averses légères' },
+            81: { day: '🌧️', night: '🌧️', desc: 'Averses modérées' },
+            82: { day: '🌧️', night: '🌧️', desc: 'Averses violentes' },
+            95: { day: '⛈️', night: '⛈️', desc: 'Orage' },
+            96: { day: '⛈️', night: '⛈️', desc: 'Orage avec grêle' },
+            99: { day: '⛈️', night: '⛈️', desc: 'Orage violent' }
+        };
+
+        const daysOfWeek = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+
+        // Helpers
+        function createElement(tag, classes = [], textContent = '') {
+            const el = document.createElement(tag);
+            if (classes.length) el.classList.add(...classes);
+            if (textContent) el.textContent = textContent;
+            return el;
+        }
+
+        function clearElement(el) {
+            while (el.firstChild) el.removeChild(el.firstChild);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            updateTime();
+            setInterval(updateTime, 1000);
+            initGeolocation();
+            setTimeout(() => initGlobe(), 100);
+        });
+
+        function updateTime() {
+            const now = new Date();
+            const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            const dateOptions = { weekday: 'long', day: 'numeric', month: 'long' };
+
+            document.getElementById('currentTime').textContent = now.toLocaleTimeString('fr-FR', timeOptions);
+            document.getElementById('currentDate').textContent = now.toLocaleDateString('fr-FR', dateOptions);
+        }
+
+        function initGeolocation() {
+            if (!navigator.geolocation) {
+                showLocationError('Géolocalisation non supportée');
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                position => {
+                    currentPosition = {
+                        lat: position.coords.latitude,
+                        lon: position.coords.longitude
+                    };
+                    onLocationSuccess();
+                },
+                () => {
+                    showLocationError('Position par défaut');
+                    currentPosition = { lat: 48.8566, lon: 2.3522 };
+                    onLocationSuccess();
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        }
+
+        function onLocationSuccess() {
+            fetchWeather();
+            fetchTransport();
+            fetchExchangeRates();
+            reverseGeocode();
+            setTimeout(initGlobeWithPosition, 500);
+
+            setInterval(() => {
+                fetchWeather();
+                fetchTransport();
+            }, CONFIG.refreshInterval);
+        }
+
+        async function reverseGeocode() {
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?lat=${currentPosition.lat}&lon=${currentPosition.lon}&format=json&accept-language=fr`
+                );
+                const data = await response.json();
+
+                if (data && data.address) {
+                    const city = data.address.city || data.address.town || data.address.village || data.address.municipality || '';
+                    const country = data.address.country_code ? data.address.country_code.toUpperCase() : '';
+                    document.getElementById('locationName').textContent = city;
+                    document.getElementById('locationCountry').textContent = country ? `, ${country}` : '';
+                }
+            } catch {
+                document.getElementById('locationName').textContent = `${currentPosition.lat.toFixed(2)}°`;
+                document.getElementById('locationCountry').textContent = `, ${currentPosition.lon.toFixed(2)}°`;
+            }
+        }
+
+        function showLocationError(message) {
+            document.getElementById('locationName').textContent = message;
+            document.getElementById('locationCountry').textContent = '';
+        }
+
+        function isDaytime() {
+            if (window.sunTimes) {
+                const now = new Date();
+                return now >= window.sunTimes.sunrise && now < window.sunTimes.sunset;
+            }
+            const hour = new Date().getHours();
+            return hour >= 6 && hour < 20;
+        }
+
+        function getWeatherInfo(code) {
+            const info = wmoIcons[code] || wmoIcons[0];
+            return {
+                icon: isDaytime() ? info.day : info.night,
+                description: info.desc
+            };
+        }
+
+        // Weather
+        async function fetchWeather() {
+            const container = document.getElementById('weatherContent');
+
+            try {
+                const response = await fetch(
+                    `https://api.open-meteo.com/v1/forecast?latitude=${currentPosition.lat}&longitude=${currentPosition.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=sunrise,sunset&timezone=auto&forecast_days=1`
+                );
+
+                if (!response.ok) throw new Error('API Error');
+
+                const data = await response.json();
+
+                if (data.daily && data.daily.sunrise && data.daily.sunset) {
+                    window.sunTimes = {
+                        sunrise: new Date(data.daily.sunrise[0]),
+                        sunset: new Date(data.daily.sunset[0])
+                    };
+                }
+
+                renderWeather(container, data);
+            } catch {
+                renderWeatherError(container);
+            }
+        }
+
+        function renderWeather(container, data) {
+            clearElement(container);
+
+            const current = data.current;
+            const weatherInfo = getWeatherInfo(current.weather_code);
+
+            const weatherMain = createElement('div', ['weather-main']);
+            weatherMain.appendChild(createElement('div', ['weather-icon-large'], weatherInfo.icon));
+
+            const weatherInfoDiv = createElement('div', ['weather-info']);
+            const temperature = createElement('div', ['temperature']);
+            temperature.textContent = Math.round(current.temperature_2m);
+            temperature.appendChild(createElement('span', ['temperature-unit'], '°C'));
+            weatherInfoDiv.appendChild(temperature);
+            weatherInfoDiv.appendChild(createElement('div', ['weather-description'], weatherInfo.description));
+            weatherMain.appendChild(weatherInfoDiv);
+
+            const details = createElement('div', ['weather-details']);
+            [
+                { icon: '🌡️', value: `${Math.round(current.apparent_temperature)}°`, label: 'Ressenti' },
+                { icon: '💧', value: `${current.relative_humidity_2m}%`, label: 'Humidité' },
+                { icon: '💨', value: `${Math.round(current.wind_speed_10m)}`, label: 'km/h' }
+            ].forEach(d => {
+                const detail = createElement('div', ['weather-detail']);
+                detail.appendChild(createElement('div', ['detail-icon'], d.icon));
+                detail.appendChild(createElement('div', ['detail-value'], d.value));
+                detail.appendChild(createElement('div', ['detail-label'], d.label));
+                details.appendChild(detail);
+            });
+            weatherMain.appendChild(details);
+
+            container.appendChild(weatherMain);
+        }
+
+        function renderWeatherError(container) {
+            clearElement(container);
+            const errorContainer = createElement('div', ['error-container']);
+            errorContainer.appendChild(createElement('div', ['error-icon'], '🌧️'));
+            errorContainer.appendChild(createElement('p', ['error-message'], 'Erreur météo'));
+            const retryBtn = createElement('button', ['retry-button'], 'Réessayer');
+            retryBtn.addEventListener('click', fetchWeather);
+            errorContainer.appendChild(retryBtn);
+            container.appendChild(errorContainer);
+        }
+
+        // Transport
+        const SWISS_TRANSPORT_API = 'https://transport.opendata.ch/v1';
+
+        async function fetchTransport() {
+            const container = document.getElementById('transportContent');
+
+            try {
+                const locationsResponse = await fetch(
+                    `${SWISS_TRANSPORT_API}/locations?x=${currentPosition.lat}&y=${currentPosition.lon}&type=station`
+                );
+
+                if (!locationsResponse.ok) throw new Error('API Error');
+
+                const locationsData = await locationsResponse.json();
+                const validStations = (locationsData.stations || []).filter(s => s.id !== null);
+
+                if (validStations.length === 0) {
+                    renderTransportCard(container, null, []);
+                    return;
+                }
+
+                const closestStation = validStations[0];
+                const stationDistance = calculateDistance(
+                    currentPosition.lat, currentPosition.lon,
+                    closestStation.coordinate.x, closestStation.coordinate.y
+                );
+
+                const stationboardResponse = await fetch(
+                    `${SWISS_TRANSPORT_API}/stationboard?id=${encodeURIComponent(closestStation.id)}&limit=20`
+                );
+
+                if (!stationboardResponse.ok) throw new Error('Stationboard Error');
+
+                const stationboardData = await stationboardResponse.json();
+                const allDepartures = [];
+
+                if (stationboardData.stationboard) {
+                    stationboardData.stationboard.forEach(journey => {
+                        const now = new Date();
+                        const depTime = new Date(journey.stop.departure);
+                        const diffMs = depTime - now;
+                        const diffMins = Math.max(0, Math.round(diffMs / 60000));
+
+                        const delay = journey.stop.delay || 0;
+                        const platform = journey.stop.platform || null;
+                        const category = (journey.category || '').toUpperCase();
+
+                        let type = 'other';
+                        if (['B', 'BUS', 'NFB', 'NFO', 'KB'].includes(category)) type = 'bus';
+                        else if (['T', 'TRAM', 'M', 'METRO'].includes(category)) type = 'tram';
+                        else if (['S', 'SN', 'IR', 'IC', 'ICE', 'ICN', 'EC', 'EN', 'RE', 'R', 'RB', 'PE', 'TGV'].includes(category)) type = 'train';
+
+                        allDepartures.push({
+                            line: journey.number || journey.name || '?',
+                            destination: journey.to || 'Direction inconnue',
+                            minutes: diffMins,
+                            category, type, delay, platform
+                        });
+                    });
+                }
+
+                const stop = {
+                    id: closestStation.id,
+                    name: closestStation.name,
+                    distance: stationDistance
+                };
+
+                allDepartures.sort((a, b) => a.minutes - b.minutes);
+                allDeparturesGlobal = allDepartures;
+
+                renderTransportCard(container, stop, allDepartures.slice(0, 10));
+                renderDelaysCard(allDepartures);
+                renderTicker(allDepartures);
+
+            } catch {
+                renderTransportError(container);
+            }
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3;
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+            const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            return Math.round(R * c);
+        }
+
+        function getTransportIcon(type) {
+            switch (type) {
+                case 'bus': return '🚌';
+                case 'tram': return '🚊';
+                case 'train': return '🚆';
+                default: return '🚏';
+            }
+        }
+
+        function renderTransportCard(container, stop, departures) {
+            clearElement(container);
+
+            if (!stop) {
+                const empty = createElement('div', ['empty-departures']);
+                empty.appendChild(createElement('div', ['icon'], '🚏'));
+                empty.appendChild(createElement('p', [], 'Aucun arrêt trouvé'));
+                container.appendChild(empty);
+                return;
+            }
+
+            const stopInfo = createElement('div', ['stop-info']);
+            stopInfo.appendChild(createElement('span', ['stop-distance'], `${stop.distance}m`));
+            stopInfo.appendChild(createElement('span', ['stop-name'], stop.name));
+            container.appendChild(stopInfo);
+
+            if (departures.length === 0) {
+                const empty = createElement('div', ['empty-departures']);
+                empty.appendChild(createElement('p', [], 'Aucun départ prévu'));
+                container.appendChild(empty);
+                return;
+            }
+
+            const grid = createElement('div', ['departures-grid']);
+            departures.forEach(dep => grid.appendChild(createDepartureItem(dep)));
+            container.appendChild(grid);
+        }
+
+        function createDepartureItem(departure) {
+            const isImminent = departure.minutes <= 3;
+            const hasDelay = departure.delay && departure.delay > 0;
+
+            const item = createElement('div', ['departure-item']);
+            if (hasDelay) item.classList.add('delayed');
+
+            item.appendChild(createElement('span', ['transport-type-icon'], getTransportIcon(departure.type)));
+
+            const lineClass = `line-${departure.line}`;
+            item.appendChild(createElement('div', ['line-badge', departure.type, lineClass], departure.line));
+
+            const info = createElement('div', ['departure-info']);
+            info.appendChild(createElement('div', ['departure-destination'], departure.destination));
+
+            const typeLabelContainer = createElement('div', ['departure-type-container']);
+            if (departure.platform) {
+                typeLabelContainer.appendChild(createElement('span', ['departure-platform'], `Voie ${departure.platform}`));
+            } else {
+                typeLabelContainer.appendChild(createElement('span', ['departure-type'], departure.category || departure.type.toUpperCase()));
+            }
+
+            if (hasDelay) {
+                typeLabelContainer.appendChild(createElement('span', ['delay-badge'], `+${departure.delay}'`));
+            }
+
+            info.appendChild(typeLabelContainer);
+            item.appendChild(info);
+
+            const timeDiv = createElement('div', ['departure-time']);
+            const timeValue = createElement('div', ['time-value'], `${departure.minutes}'`);
+            if (isImminent) timeValue.classList.add('imminent');
+            timeDiv.appendChild(timeValue);
+            timeDiv.appendChild(createElement('div', ['time-label'], 'min'));
+            item.appendChild(timeDiv);
+
+            return item;
+        }
+
+        function renderTransportError(container) {
+            clearElement(container);
+            const errorContainer = createElement('div', ['error-container']);
+            errorContainer.appendChild(createElement('div', ['error-icon'], '🚏'));
+            errorContainer.appendChild(createElement('p', ['error-message'], 'Impossible de charger les horaires'));
+            const retryBtn = createElement('button', ['retry-button'], 'Réessayer');
+            retryBtn.addEventListener('click', fetchTransport);
+            errorContainer.appendChild(retryBtn);
+            container.appendChild(errorContainer);
+            renderDelaysError();
+        }
+
+        // Delays
+        function renderDelaysCard(departures) {
+            const container = document.getElementById('delaysContent');
+            clearElement(container);
+
+            const delayedDepartures = departures.filter(d => d.delay && d.delay > 0);
+            const totalDepartures = departures.length;
+            const delayedCount = delayedDepartures.length;
+            const onTimePercentage = totalDepartures > 0
+                ? Math.round(((totalDepartures - delayedCount) / totalDepartures) * 100)
+                : 100;
+            const avgDelay = delayedCount > 0
+                ? Math.round(delayedDepartures.reduce((sum, d) => sum + d.delay, 0) / delayedCount)
+                : 0;
+
+            const summary = createElement('div', ['delays-summary']);
+            const stats = createElement('div', ['delays-stats']);
+
+            // Stats
+            [
+                { value: `${onTimePercentage}%`, label: 'À l\'heure', className: onTimePercentage >= 90 ? 'good' : onTimePercentage >= 70 ? 'warning' : 'bad' },
+                { value: delayedCount.toString(), label: 'Retards', className: delayedCount === 0 ? 'good' : delayedCount <= 2 ? 'warning' : 'bad' },
+                { value: avgDelay > 0 ? `${avgDelay}'` : '-', label: 'Moyenne', className: avgDelay === 0 ? 'good' : avgDelay <= 3 ? 'warning' : 'bad' }
+            ].forEach(s => {
+                const stat = createElement('div', ['delay-stat']);
+                const value = createElement('div', ['delay-stat-value', s.className], s.value);
+                stat.appendChild(value);
+                stat.appendChild(createElement('div', ['delay-stat-label'], s.label));
+                stats.appendChild(stat);
+            });
+
+            summary.appendChild(stats);
+
+            if (delayedDepartures.length > 0) {
+                const delayedLines = createElement('div', ['delayed-lines']);
+                const sortedDelayed = [...delayedDepartures].sort((a, b) => b.delay - a.delay).slice(0, 4);
+
+                sortedDelayed.forEach(dep => {
+                    const item = createElement('div', ['delayed-line-item']);
+                    const info = createElement('div', ['delayed-line-info']);
+
+                    const lineClass = `line-${dep.line}`;
+                    info.appendChild(createElement('div', ['delayed-line-badge', 'line-badge', dep.type, lineClass], dep.line));
+                    info.appendChild(createElement('span', ['delayed-line-destination'], dep.destination));
+                    item.appendChild(info);
+                    item.appendChild(createElement('span', ['delayed-line-delay'], `+${dep.delay}'`));
+                    delayedLines.appendChild(item);
+                });
+
+                summary.appendChild(delayedLines);
+            } else {
+                const noDelays = createElement('div', ['no-delays']);
+                noDelays.appendChild(createElement('span', ['icon'], '✅'));
+                noDelays.appendChild(createElement('span', ['message'], 'Aucun retard'));
+                summary.appendChild(noDelays);
+            }
+
+            container.appendChild(summary);
+        }
+
+        function renderDelaysError() {
+            const container = document.getElementById('delaysContent');
+            clearElement(container);
+            const errorContainer = createElement('div', ['error-container']);
+            errorContainer.appendChild(createElement('div', ['error-icon'], '⚠️'));
+            errorContainer.appendChild(createElement('p', ['error-message'], 'Données indisponibles'));
+            container.appendChild(errorContainer);
+        }
+
+        // Ticker
+        function renderTicker(departures) {
+            const ticker = document.getElementById('tickerScroll');
+            clearElement(ticker);
+
+            const items = departures.slice(0, 15);
+
+            // Duplicate for seamless loop
+            const allItems = [...items, ...items];
+
+            allItems.forEach(dep => {
+                const item = createElement('div', ['ticker-item']);
+
+                const lineClass = `line-${dep.line}`;
+                item.appendChild(createElement('div', ['line-badge', dep.type, lineClass], dep.line));
+
+                item.appendChild(createElement('span', ['ticker-destination'], dep.destination));
+                item.appendChild(createElement('span', ['ticker-time'], `${dep.minutes}'`));
+
+                if (dep.delay && dep.delay > 0) {
+                    item.appendChild(createElement('span', ['ticker-delay'], `(+${dep.delay}')`));
+                }
+
+                ticker.appendChild(item);
+            });
+        }
+
+        // Exchange Rates
+        async function fetchExchangeRates() {
+            const container = document.getElementById('exchangeContent');
+
+            try {
+                const response = await fetch('https://api.frankfurter.app/latest?from=CHF&to=EUR,USD');
+                const data = await response.json();
+
+                const rates = {
+                    EUR_to_CHF: 1 / data.rates.EUR,
+                    CHF_to_EUR: data.rates.EUR,
+                    USD_to_CHF: 1 / data.rates.USD,
+                    CHF_to_USD: data.rates.USD
+                };
+
+                renderExchangeRates(container, rates);
+
+            } catch {
+                renderExchangeError(container);
+            }
+        }
+
+        function renderExchangeRates(container, rates) {
+            clearElement(container);
+
+            const ratesDiv = createElement('div', ['exchange-rates']);
+
+            // EUR
+            const eurItem = createElement('div', ['exchange-rate-item']);
+            const eurCurrency = createElement('div', ['exchange-currency']);
+            eurCurrency.appendChild(createElement('span', ['currency-flag'], '🇪🇺'));
+            eurCurrency.appendChild(createElement('span', ['currency-code'], 'EUR'));
+            eurItem.appendChild(eurCurrency);
+
+            const eurValues = createElement('div', ['exchange-values']);
+            const eurToCHF = createElement('div', ['exchange-value']);
+            eurToCHF.appendChild(createElement('span', ['rate-value'], rates.EUR_to_CHF.toFixed(4)));
+            eurToCHF.appendChild(createElement('span', ['rate-label'], '1 EUR→CHF'));
+            eurValues.appendChild(eurToCHF);
+
+            const chfToEUR = createElement('div', ['exchange-value']);
+            chfToEUR.appendChild(createElement('span', ['rate-value'], rates.CHF_to_EUR.toFixed(4)));
+            chfToEUR.appendChild(createElement('span', ['rate-label'], '1 CHF→EUR'));
+            eurValues.appendChild(chfToEUR);
+
+            eurItem.appendChild(eurValues);
+            ratesDiv.appendChild(eurItem);
+
+            // USD
+            const usdItem = createElement('div', ['exchange-rate-item']);
+            const usdCurrency = createElement('div', ['exchange-currency']);
+            usdCurrency.appendChild(createElement('span', ['currency-flag'], '🇺🇸'));
+            usdCurrency.appendChild(createElement('span', ['currency-code'], 'USD'));
+            usdItem.appendChild(usdCurrency);
+
+            const usdValues = createElement('div', ['exchange-values']);
+            const usdToCHF = createElement('div', ['exchange-value']);
+            usdToCHF.appendChild(createElement('span', ['rate-value'], rates.USD_to_CHF.toFixed(4)));
+            usdToCHF.appendChild(createElement('span', ['rate-label'], '1 USD→CHF'));
+            usdValues.appendChild(usdToCHF);
+
+            const chfToUSD = createElement('div', ['exchange-value']);
+            chfToUSD.appendChild(createElement('span', ['rate-value'], rates.CHF_to_USD.toFixed(4)));
+            chfToUSD.appendChild(createElement('span', ['rate-label'], '1 CHF→USD'));
+            usdValues.appendChild(chfToUSD);
+
+            usdItem.appendChild(usdValues);
+            ratesDiv.appendChild(usdItem);
+
+            container.appendChild(ratesDiv);
+        }
+
+        function renderExchangeError(container) {
+            clearElement(container);
+            const errorContainer = createElement('div', ['error-container']);
+            errorContainer.appendChild(createElement('div', ['error-icon'], '💱'));
+            errorContainer.appendChild(createElement('p', ['error-message'], 'Erreur taux'));
+            const retryBtn = createElement('button', ['retry-button'], 'Réessayer');
+            retryBtn.addEventListener('click', fetchExchangeRates);
+            errorContainer.appendChild(retryBtn);
+            container.appendChild(errorContainer);
+        }
+
+        // ============================================
+        // 3D GLOBE
+        // ============================================
+
+        let globe = null;
+
+        function calculateSunPosition() {
+            const now = new Date();
+            const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+            const hour = now.getUTCHours() + now.getUTCMinutes() / 60;
+
+            const declination = -23.45 * Math.cos((360 / 365) * (dayOfYear + 10) * Math.PI / 180);
+            const sunLongitude = -((hour - 12) * 15);
+            const sunLatitude = declination;
+
+            return { lat: sunLatitude, lon: sunLongitude };
+        }
+
+        function latLonToVector3(lat, lon, radius) {
+            const phi = (90 - lat) * (Math.PI / 180);
+            const theta = (lon + 180) * (Math.PI / 180);
+
+            const x = -radius * Math.sin(phi) * Math.cos(theta);
+            const y = radius * Math.cos(phi);
+            const z = radius * Math.sin(phi) * Math.sin(theta);
+
+            return new THREE.Vector3(x, y, z);
+        }
+
+        function initGlobe() {
+            const container = document.getElementById('globeContainer');
+            const loadingEl = document.getElementById('globeLoading');
+
+            if (!container || !THREE) return;
+
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.z = 3.5;
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            const textureLoader = new THREE.TextureLoader();
+            textureLoader.crossOrigin = 'anonymous';
+
+            const earthTexture = textureLoader.load(
+                'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg',
+                () => loadingEl.classList.add('hidden')
+            );
+
+            const nightTexture = textureLoader.load(
+                'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-night.jpg'
+            );
+
+            const earthGeometry = new THREE.SphereGeometry(1, 64, 64);
+
+            const earthMaterial = new THREE.ShaderMaterial({
+                uniforms: {
+                    dayTexture: { value: earthTexture },
+                    nightTexture: { value: nightTexture },
+                    sunDirection: { value: new THREE.Vector3(1, 0, 0) }
+                },
+                vertexShader: `
+                    varying vec2 vUv;
+                    varying vec3 vNormal;
+                    varying vec3 vPosition;
+                    void main() {
+                        vUv = uv;
+                        vNormal = normalize(normalMatrix * normal);
+                        vPosition = position;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform sampler2D dayTexture;
+                    uniform sampler2D nightTexture;
+                    uniform vec3 sunDirection;
+                    varying vec2 vUv;
+                    varying vec3 vNormal;
+                    varying vec3 vPosition;
+                    void main() {
+                        vec3 objectNormal = normalize(vPosition);
+                        float sunIntensity = dot(objectNormal, normalize(sunDirection));
+                        float dayNightMix = smoothstep(-0.2, 0.3, sunIntensity);
+                        vec4 dayColor = texture2D(dayTexture, vUv);
+                        vec4 nightColor = texture2D(nightTexture, vUv);
+                        nightColor.rgb *= 1.5;
+                        vec3 finalColor = mix(nightColor.rgb, dayColor.rgb, dayNightMix);
+                        vec3 viewNormal = normalize(vNormal);
+                        float rim = 1.0 - max(dot(viewNormal, vec3(0.0, 0.0, 1.0)), 0.0);
+                        rim = pow(rim, 3.0);
+                        finalColor += vec3(0.3, 0.6, 1.0) * rim * 0.3;
+                        gl_FragColor = vec4(finalColor, 1.0);
+                    }
+                `
+            });
+
+            const earth = new THREE.Mesh(earthGeometry, earthMaterial);
+            scene.add(earth);
+
+            // Atmosphere
+            const atmosphereGeometry = new THREE.SphereGeometry(1.15, 64, 64);
+            const atmosphereMaterial = new THREE.ShaderMaterial({
+                vertexShader: `
+                    varying vec3 vNormal;
+                    void main() {
+                        vNormal = normalize(normalMatrix * normal);
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    varying vec3 vNormal;
+                    void main() {
+                        float intensity = pow(0.7 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);
+                        gl_FragColor = vec4(0.3, 0.6, 1.0, 1.0) * intensity * 0.5;
+                    }
+                `,
+                blending: THREE.AdditiveBlending,
+                side: THREE.BackSide,
+                transparent: true
+            });
+            scene.add(new THREE.Mesh(atmosphereGeometry, atmosphereMaterial));
+
+            // Stars
+            const starsGeometry = new THREE.BufferGeometry();
+            const starPositions = [];
+            for (let i = 0; i < 1000; i++) {
+                starPositions.push(
+                    (Math.random() - 0.5) * 200,
+                    (Math.random() - 0.5) * 200,
+                    (Math.random() - 0.5) * 200
+                );
+            }
+            starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starPositions, 3));
+            scene.add(new THREE.Points(starsGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 0.5 })));
+
+            let marker = null;
+            let targetRotation = { x: 0, y: 0 };
+            let currentRotation = { x: 0, y: 0 };
+
+            function createLocationMarker(lat, lon) {
+                if (marker) scene.remove(marker);
+
+                const markerGroup = new THREE.Group();
+                const pinMaterial = new THREE.MeshBasicMaterial({ color: 0x4ecdc4 });
+                markerGroup.add(new THREE.Mesh(new THREE.SphereGeometry(0.03, 16, 16), pinMaterial));
+
+                const ringMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x4ecdc4,
+                    transparent: true,
+                    opacity: 0.6,
+                    side: THREE.DoubleSide
+                });
+                markerGroup.add(new THREE.Mesh(new THREE.RingGeometry(0.04, 0.07, 32), ringMaterial));
+
+                const pos = latLonToVector3(lat, lon, 1.02);
+                markerGroup.position.copy(pos);
+                markerGroup.lookAt(0, 0, 0);
+
+                scene.add(markerGroup);
+                marker = markerGroup;
+            }
+
+            function updateSunPosition() {
+                const sunPos = calculateSunPosition();
+                const sunVec = latLonToVector3(sunPos.lat, sunPos.lon, 1);
+                earthMaterial.uniforms.sunDirection.value.copy(sunVec).normalize();
+
+                const sunEl = document.getElementById('sunPosition');
+                const sunIcon = document.getElementById('sunIcon');
+                if (sunEl) {
+                    const isDay = isDaytime();
+                    sunEl.textContent = isDay ? 'Jour' : 'Nuit';
+                    if (sunIcon) sunIcon.textContent = isDay ? '☀️' : '🌙';
+                }
+            }
+
+            function animateToPosition(lat, lon) {
+                targetRotation.y = -lon * (Math.PI / 180) - Math.PI / 2;
+                targetRotation.x = lat * (Math.PI / 180);
+
+                createLocationMarker(lat, lon);
+
+                const coordsEl = document.getElementById('globeCoords');
+                if (coordsEl) coordsEl.textContent = `${lat.toFixed(4)}°, ${lon.toFixed(4)}°`;
+            }
+
+            // Mouse interaction
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
+
+            container.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            container.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                targetRotation.y += (e.clientX - previousMousePosition.x) * 0.005;
+                targetRotation.x += (e.clientY - previousMousePosition.y) * 0.005;
+                targetRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, targetRotation.x));
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            container.addEventListener('mouseup', () => isDragging = false);
+            container.addEventListener('mouseleave', () => isDragging = false);
+
+            container.addEventListener('dblclick', () => {
+                if (currentPosition) animateToPosition(currentPosition.lat, currentPosition.lon);
+            });
+
+            function animate() {
+                requestAnimationFrame(animate);
+
+                currentRotation.x += (targetRotation.x - currentRotation.x) * 0.05;
+                currentRotation.y += (targetRotation.y - currentRotation.y) * 0.05;
+
+                earth.rotation.x = currentRotation.x;
+                earth.rotation.y = currentRotation.y;
+
+                updateSunPosition();
+                renderer.render(scene, camera);
+            }
+
+            function handleResize() {
+                const w = container.clientWidth;
+                const h = container.clientHeight;
+                camera.aspect = w / h;
+                camera.updateProjectionMatrix();
+                renderer.setSize(w, h);
+            }
+            window.addEventListener('resize', handleResize);
+
+            animate();
+
+            globe = { animateToPosition };
+        }
+
+        function initGlobeWithPosition() {
+            if (currentPosition && globe) {
+                globe.animateToPosition(currentPosition.lat, currentPosition.lon);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1476 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Mode Kiosk</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: rgba(255, 255, 255, 0.03);
+            --bg-card-hover: rgba(255, 255, 255, 0.06);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --text-muted: rgba(255, 255, 255, 0.35);
+            --accent-warm: #ff6b35;
+            --accent-cool: #4ecdc4;
+            --accent-purple: #a855f7;
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --gradient-warm: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+            --gradient-cool: linear-gradient(135deg, #4ecdc4 0%, #44a8b3 100%);
+            --gradient-mesh:
+                radial-gradient(at 20% 80%, rgba(78, 205, 196, 0.15) 0%, transparent 50%),
+                radial-gradient(at 80% 20%, rgba(255, 107, 53, 0.12) 0%, transparent 50%),
+                radial-gradient(at 50% 50%, rgba(168, 85, 247, 0.08) 0%, transparent 60%);
+            --shadow-glow: 0 0 60px rgba(78, 205, 196, 0.15);
+            --radius-sm: 8px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --radius-xl: 32px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            font-size: 16px;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        .background-layer {
+            position: fixed;
+            inset: 0;
+            background: var(--gradient-mesh);
+            z-index: -2;
+            animation: meshFloat 20s ease-in-out infinite;
+        }
+
+        @keyframes meshFloat {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.1) rotate(2deg); }
+        }
+
+        .noise-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+
+        /* Kiosk Full-Screen Container */
+        .kiosk-container {
+            width: 100vw;
+            height: 100vh;
+            padding: 1.5rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 1.5rem;
+            overflow: hidden;
+        }
+
+        /* Large Clock Overlay */
+        .clock-overlay {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 0.25rem;
+            padding: 1rem 1.5rem;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(20px);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-subtle);
+        }
+
+        .clock-time {
+            font-family: 'Space Mono', monospace;
+            font-size: 3.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: var(--gradient-warm);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .clock-date {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            text-transform: capitalize;
+        }
+
+        .clock-location {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .location-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-cool);
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        /* Cards - Full Height */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-xl);
+            padding: 1.5rem;
+            backdrop-filter: blur(20px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: fadeSlideUp 0.8s ease-out backwards;
+        }
+
+        .card:nth-child(1) { animation-delay: 0.1s; }
+        .card:nth-child(2) { animation-delay: 0.2s; }
+        .card:nth-child(3) { animation-delay: 0.3s; }
+        .card:nth-child(4) { animation-delay: 0.4s; }
+
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            flex-shrink: 0;
+        }
+
+        .card-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-secondary);
+        }
+
+        .card-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        .card-icon.weather { background: var(--gradient-warm); }
+        .card-icon.transport { background: var(--gradient-cool); }
+        .card-icon.exchange { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+        .card-icon.delays { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+        .card-icon.globe { background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%); }
+
+        .card-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Weather Card - Kiosk */
+        .weather-current {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .weather-icon-large {
+            font-size: 5rem;
+            line-height: 1;
+            filter: drop-shadow(0 10px 30px rgba(255, 107, 53, 0.3));
+            animation: float 4s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .weather-info {
+            flex: 1;
+        }
+
+        .temperature {
+            font-size: 4.5rem;
+            font-weight: 300;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            background: var(--gradient-warm);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .temperature-unit {
+            font-size: 1.5rem;
+            font-weight: 400;
+        }
+
+        .weather-description {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+            text-transform: capitalize;
+        }
+
+        .weather-details {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.75rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .weather-detail {
+            text-align: center;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: var(--radius-md);
+        }
+
+        .detail-icon {
+            font-size: 1.25rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .detail-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .detail-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .forecast-section {
+            margin-top: auto;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .forecast-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        .forecast-list {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .forecast-item {
+            flex: 1;
+            text-align: center;
+            padding: 0.75rem 0.25rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: var(--radius-md);
+        }
+
+        .forecast-day {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .forecast-icon {
+            font-size: 1.5rem;
+            margin: 0.25rem 0;
+        }
+
+        .forecast-temp {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.8rem;
+        }
+
+        .forecast-temp-high { color: var(--text-primary); }
+        .forecast-temp-low { color: var(--text-muted); }
+
+        /* Transport Card - Kiosk */
+        .stop-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-subtle);
+            flex-shrink: 0;
+        }
+
+        .stop-distance {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.75rem;
+            padding: 0.2rem 0.6rem;
+            background: rgba(78, 205, 196, 0.15);
+            color: var(--accent-cool);
+            border-radius: var(--radius-sm);
+        }
+
+        .stop-name {
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .departures-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .departure-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: var(--radius-md);
+            border: 1px solid transparent;
+            flex-shrink: 0;
+        }
+
+        .departure-item.delayed {
+            border-left: 3px solid #ef4444;
+        }
+
+        .transport-type-icon {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .line-badge {
+            min-width: 44px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            font-size: 0.85rem;
+            font-family: 'Space Mono', monospace;
+        }
+
+        /* Default fallback colors by transport type */
+        .line-badge.bus { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .line-badge.tram { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .line-badge.train { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+        .line-badge.other { background: linear-gradient(135deg, #636e72 0%, #b2bec3 100%); }
+
+        /* TPG Official line colors */
+        .line-badge.line-12 { background: #F5A300; color: #000; }
+        .line-badge.line-14 { background: #5A1E82; }
+        .line-badge.line-15 { background: #84471C; }
+        .line-badge.line-17 { background: #00ACE7; color: #000; }
+        .line-badge.line-18 { background: #B82F89; }
+        .line-badge.line-2 { background: #D2DB4A; color: #000; }
+        .line-badge.line-3 { background: #B82F89; }
+        .line-badge.line-6 { background: #008CBE; }
+        .line-badge.line-7 { background: #00A828; }
+        .line-badge.line-10 { background: #006E3D; }
+        .line-badge.line-19 { background: #A05909; }
+        .line-badge.line-1 { background: #5A1E82; }
+        .line-badge.line-5 { background: #00ACE7; color: #000; }
+        .line-badge.line-8 { background: #00A828; }
+        .line-badge.line-9 { background: #00A828; }
+        .line-badge.line-11 { background: #82419E; }
+        .line-badge.line-20 { background: #00A828; }
+        .line-badge.line-21 { background: #78003C; }
+        .line-badge.line-22 { background: #5A1E82; }
+        .line-badge.line-23 { background: #B82F89; }
+        .line-badge.line-25 { background: #A05909; }
+        .line-badge.line-28 { background: #82419E; }
+
+        .departure-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .departure-destination {
+            font-size: 0.9rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .departure-type-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .departure-type, .departure-platform {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .delay-badge {
+            font-size: 0.65rem;
+            font-weight: 600;
+            font-family: 'Space Mono', monospace;
+            padding: 0.1rem 0.3rem;
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border-radius: var(--radius-sm);
+        }
+
+        .departure-time {
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .time-value {
+            font-family: 'Space Mono', monospace;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .time-value.imminent {
+            color: var(--accent-warm);
+            animation: blink 1s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .time-label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .api-note {
+            font-size: 0.65rem;
+            color: var(--accent-cool);
+            text-align: center;
+            margin-top: auto;
+            padding-top: 0.5rem;
+            flex-shrink: 0;
+        }
+
+        /* Exchange Card - Kiosk */
+        .exchange-rates {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            flex: 1;
+        }
+
+        .exchange-rate-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .exchange-currency {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .currency-flag { font-size: 1.5rem; }
+
+        .currency-info { display: flex; flex-direction: column; }
+
+        .currency-code {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .currency-name {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .exchange-values {
+            display: flex;
+            gap: 1.25rem;
+        }
+
+        .exchange-value {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .rate-value {
+            font-family: 'Space Mono', monospace;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .rate-label {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+        }
+
+        .exchange-source {
+            font-size: 0.65rem;
+            color: #f59e0b;
+            text-align: center;
+            margin-top: auto;
+        }
+
+        /* Delays Card - Kiosk */
+        .delays-summary {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            flex: 1;
+        }
+
+        .delays-stats {
+            display: flex;
+            gap: 0.75rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .delay-stat {
+            flex: 1;
+            text-align: center;
+            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: var(--radius-md);
+        }
+
+        .delay-stat-value {
+            font-family: 'Space Mono', monospace;
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+
+        .delay-stat-value.good { color: #22c55e; }
+        .delay-stat-value.warning { color: #f59e0b; }
+        .delay-stat-value.bad { color: #ef4444; }
+
+        .delay-stat-label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .delayed-lines {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .delayed-line-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.6rem 0.75rem;
+            background: rgba(239, 68, 68, 0.08);
+            border-radius: var(--radius-md);
+            border-left: 3px solid #ef4444;
+        }
+
+        .delayed-line-info {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .delayed-line-badge {
+            min-width: 36px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            font-size: 0.75rem;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .delayed-line-destination {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .delayed-line-delay {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #ef4444;
+        }
+
+        .no-delays {
+            text-align: center;
+            padding: 1.5rem;
+            color: var(--text-muted);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .no-delays .icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .no-delays .message {
+            font-size: 0.85rem;
+            color: #22c55e;
+        }
+
+        /* Loading/Error States */
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            gap: 0.75rem;
+        }
+
+        .loading-spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid var(--border-subtle);
+            border-top-color: var(--accent-cool);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .error-container {
+            text-align: center;
+            padding: 1.5rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .error-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+        .error-message { color: var(--text-secondary); margin-bottom: 0.75rem; font-size: 0.9rem; }
+
+        .retry-button {
+            padding: 0.6rem 1.25rem;
+            background: var(--gradient-cool);
+            border: none;
+            border-radius: var(--radius-md);
+            color: var(--bg-primary);
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+        }
+
+        .empty-departures {
+            text-align: center;
+            padding: 1.5rem;
+            color: var(--text-muted);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .empty-departures .icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.5;
+        }
+
+        /* Responsive - Mobile Fallback */
+        @media (max-width: 1024px) {
+            .kiosk-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto;
+                height: auto;
+                min-height: 100vh;
+                overflow-y: auto;
+            }
+
+            .card {
+                min-height: 300px;
+            }
+
+            .clock-overlay {
+                position: relative;
+                top: 0;
+                right: 0;
+                margin-bottom: 1rem;
+                grid-column: 1;
+                align-items: center;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .kiosk-container {
+                padding: 1rem;
+                gap: 1rem;
+            }
+
+            .clock-time {
+                font-size: 2.5rem;
+            }
+
+            .temperature {
+                font-size: 3.5rem;
+            }
+
+            .weather-icon-large {
+                font-size: 4rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="background-layer"></div>
+    <div class="noise-overlay"></div>
+
+    <!-- Large Clock Overlay -->
+    <div class="clock-overlay">
+        <div class="clock-time" id="currentTime">--:--:--</div>
+        <div class="clock-date" id="currentDate">--</div>
+        <div class="clock-location">
+            <div class="location-dot"></div>
+            <span id="locationName">Localisation...</span>
+            <span id="locationCountry"></span>
+        </div>
+    </div>
+
+    <main class="kiosk-container">
+        <!-- Weather Card -->
+        <section class="card" id="weatherCard">
+            <div class="card-header">
+                <div class="card-title">
+                    <div class="card-icon weather">☀️</div>
+                    Météo actuelle
+                </div>
+            </div>
+            <div class="card-content" id="weatherContent">
+                <div class="loading-container">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">Chargement de la météo...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Transport Card -->
+        <section class="card" id="transportCard">
+            <div class="card-header">
+                <div class="card-title">
+                    <div class="card-icon transport">🚏</div>
+                    Prochains Départs
+                </div>
+            </div>
+            <div class="card-content" id="transportContent">
+                <div class="loading-container">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">Recherche des arrêts...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Exchange Rate Card -->
+        <section class="card" id="exchangeCard">
+            <div class="card-header">
+                <div class="card-title">
+                    <div class="card-icon exchange">💱</div>
+                    Taux de Change CHF
+                </div>
+            </div>
+            <div class="card-content" id="exchangeContent">
+                <div class="loading-container">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">Chargement des taux...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Delays Card -->
+        <section class="card" id="delaysCard">
+            <div class="card-header">
+                <div class="card-title">
+                    <div class="card-icon delays">⚠️</div>
+                    Perturbations
+                </div>
+            </div>
+            <div class="card-content" id="delaysContent">
+                <div class="loading-container">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">Analyse des retards...</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Configuration
+        const CONFIG = {
+            refreshInterval: 60000 // 1 minute
+        };
+
+        // State
+        let currentPosition = null;
+
+        // WMO Weather interpretation codes
+        const wmoIcons = {
+            0: { day: '☀️', night: '🌙', desc: 'Ciel dégagé' },
+            1: { day: '🌤️', night: '🌙', desc: 'Principalement dégagé' },
+            2: { day: '⛅', night: '☁️', desc: 'Partiellement nuageux' },
+            3: { day: '☁️', night: '☁️', desc: 'Couvert' },
+            45: { day: '🌫️', night: '🌫️', desc: 'Brouillard' },
+            48: { day: '🌫️', night: '🌫️', desc: 'Brouillard givrant' },
+            51: { day: '🌧️', night: '🌧️', desc: 'Bruine légère' },
+            53: { day: '🌧️', night: '🌧️', desc: 'Bruine modérée' },
+            55: { day: '🌧️', night: '🌧️', desc: 'Bruine dense' },
+            56: { day: '🌧️', night: '🌧️', desc: 'Bruine verglaçante légère' },
+            57: { day: '🌧️', night: '🌧️', desc: 'Bruine verglaçante dense' },
+            61: { day: '🌦️', night: '🌧️', desc: 'Pluie légère' },
+            63: { day: '🌧️', night: '🌧️', desc: 'Pluie modérée' },
+            65: { day: '🌧️', night: '🌧️', desc: 'Pluie forte' },
+            66: { day: '🌧️', night: '🌧️', desc: 'Pluie verglaçante légère' },
+            67: { day: '🌧️', night: '🌧️', desc: 'Pluie verglaçante forte' },
+            71: { day: '🌨️', night: '🌨️', desc: 'Neige légère' },
+            73: { day: '🌨️', night: '🌨️', desc: 'Neige modérée' },
+            75: { day: '❄️', night: '❄️', desc: 'Neige forte' },
+            77: { day: '🌨️', night: '🌨️', desc: 'Grains de neige' },
+            80: { day: '🌦️', night: '🌧️', desc: 'Averses légères' },
+            81: { day: '🌧️', night: '🌧️', desc: 'Averses modérées' },
+            82: { day: '🌧️', night: '🌧️', desc: 'Averses violentes' },
+            85: { day: '🌨️', night: '🌨️', desc: 'Averses de neige légères' },
+            86: { day: '❄️', night: '❄️', desc: 'Averses de neige fortes' },
+            95: { day: '⛈️', night: '⛈️', desc: 'Orage' },
+            96: { day: '⛈️', night: '⛈️', desc: 'Orage avec grêle légère' },
+            99: { day: '⛈️', night: '⛈️', desc: 'Orage avec grêle forte' }
+        };
+
+        const daysOfWeek = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+
+        // Helpers
+        function createElement(tag, classes = [], textContent = '') {
+            const el = document.createElement(tag);
+            if (classes.length) el.classList.add(...classes);
+            if (textContent) el.textContent = textContent;
+            return el;
+        }
+
+        function clearElement(el) {
+            while (el.firstChild) el.removeChild(el.firstChild);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            updateTime();
+            setInterval(updateTime, 1000);
+            initGeolocation();
+        });
+
+        // Update time display
+        function updateTime() {
+            const now = new Date();
+            const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            const dateOptions = { weekday: 'long', day: 'numeric', month: 'long' };
+
+            document.getElementById('currentTime').textContent = now.toLocaleTimeString('fr-FR', timeOptions);
+            document.getElementById('currentDate').textContent = now.toLocaleDateString('fr-FR', dateOptions);
+        }
+
+        // Geolocation
+        function initGeolocation() {
+            if (!navigator.geolocation) {
+                showLocationError('Géolocalisation non supportée');
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                position => {
+                    currentPosition = {
+                        lat: position.coords.latitude,
+                        lon: position.coords.longitude
+                    };
+                    onLocationSuccess();
+                },
+                () => {
+                    showLocationError('Position par défaut (Paris)');
+                    currentPosition = { lat: 48.8566, lon: 2.3522 };
+                    onLocationSuccess();
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        }
+
+        function onLocationSuccess() {
+            fetchWeather();
+            fetchTransport();
+            fetchExchangeRates();
+            reverseGeocode();
+
+            setInterval(() => {
+                fetchWeather();
+                fetchTransport();
+            }, CONFIG.refreshInterval);
+        }
+
+        async function reverseGeocode() {
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?lat=${currentPosition.lat}&lon=${currentPosition.lon}&format=json&accept-language=fr`
+                );
+                const data = await response.json();
+
+                if (data && data.address) {
+                    const city = data.address.city || data.address.town || data.address.village || data.address.municipality || '';
+                    const country = data.address.country_code ? data.address.country_code.toUpperCase() : '';
+                    document.getElementById('locationName').textContent = city;
+                    document.getElementById('locationCountry').textContent = country ? `, ${country}` : '';
+                }
+            } catch {
+                document.getElementById('locationName').textContent = `${currentPosition.lat.toFixed(4)}`;
+                document.getElementById('locationCountry').textContent = `, ${currentPosition.lon.toFixed(4)}`;
+            }
+        }
+
+        function showLocationError(message) {
+            document.getElementById('locationName').textContent = message;
+            document.getElementById('locationCountry').textContent = '';
+        }
+
+        function isDaytime() {
+            if (window.sunTimes) {
+                const now = new Date();
+                return now >= window.sunTimes.sunrise && now < window.sunTimes.sunset;
+            }
+            const hour = new Date().getHours();
+            return hour >= 6 && hour < 20;
+        }
+
+        function getWeatherInfo(code) {
+            const info = wmoIcons[code] || wmoIcons[0];
+            return {
+                icon: isDaytime() ? info.day : info.night,
+                description: info.desc
+            };
+        }
+
+        // Fetch Weather
+        async function fetchWeather() {
+            const container = document.getElementById('weatherContent');
+
+            try {
+                const response = await fetch(
+                    `https://api.open-meteo.com/v1/forecast?latitude=${currentPosition.lat}&longitude=${currentPosition.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset&timezone=auto&forecast_days=6`
+                );
+
+                if (!response.ok) throw new Error('API Error');
+
+                const data = await response.json();
+
+                if (data.daily && data.daily.sunrise && data.daily.sunset) {
+                    window.sunTimes = {
+                        sunrise: new Date(data.daily.sunrise[0]),
+                        sunset: new Date(data.daily.sunset[0])
+                    };
+                }
+
+                renderWeather(container, data);
+            } catch {
+                renderWeatherError(container);
+            }
+        }
+
+        function renderWeather(container, data) {
+            clearElement(container);
+
+            const current = data.current;
+            const daily = data.daily;
+            const weatherInfo = getWeatherInfo(current.weather_code);
+
+            const weatherCurrent = createElement('div', ['weather-current']);
+            const iconLarge = createElement('div', ['weather-icon-large'], weatherInfo.icon);
+            weatherCurrent.appendChild(iconLarge);
+
+            const weatherInfoDiv = createElement('div', ['weather-info']);
+            const temperature = createElement('div', ['temperature']);
+            temperature.textContent = Math.round(current.temperature_2m);
+            const tempUnit = createElement('span', ['temperature-unit'], '°C');
+            temperature.appendChild(tempUnit);
+            weatherInfoDiv.appendChild(temperature);
+
+            const description = createElement('div', ['weather-description'], weatherInfo.description);
+            weatherInfoDiv.appendChild(description);
+            weatherCurrent.appendChild(weatherInfoDiv);
+            container.appendChild(weatherCurrent);
+
+            // Details
+            const details = createElement('div', ['weather-details']);
+            const detailsData = [
+                { icon: '🌡️', value: `${Math.round(current.apparent_temperature)}°`, label: 'Ressenti' },
+                { icon: '💧', value: `${current.relative_humidity_2m}%`, label: 'Humidité' },
+                { icon: '💨', value: Math.round(current.wind_speed_10m).toString(), label: 'km/h' }
+            ];
+
+            detailsData.forEach(d => {
+                const detail = createElement('div', ['weather-detail']);
+                detail.appendChild(createElement('div', ['detail-icon'], d.icon));
+                detail.appendChild(createElement('div', ['detail-value'], d.value));
+                detail.appendChild(createElement('div', ['detail-label'], d.label));
+                details.appendChild(detail);
+            });
+            container.appendChild(details);
+
+            // Forecast
+            const forecastSection = createElement('div', ['forecast-section']);
+            forecastSection.appendChild(createElement('div', ['forecast-title'], 'Prévisions'));
+
+            const forecastList = createElement('div', ['forecast-list']);
+            for (let i = 1; i < Math.min(6, daily.time.length); i++) {
+                const date = new Date(daily.time[i]);
+                const dayWeatherInfo = getWeatherInfo(daily.weather_code[i]);
+
+                const forecastItem = createElement('div', ['forecast-item']);
+                forecastItem.appendChild(createElement('div', ['forecast-day'], daysOfWeek[date.getDay()]));
+                forecastItem.appendChild(createElement('div', ['forecast-icon'], dayWeatherInfo.icon));
+
+                const forecastTemp = createElement('div', ['forecast-temp']);
+                forecastTemp.appendChild(createElement('span', ['forecast-temp-high'], `${Math.round(daily.temperature_2m_max[i])}°`));
+                forecastTemp.appendChild(document.createTextNode(' '));
+                forecastTemp.appendChild(createElement('span', ['forecast-temp-low'], `${Math.round(daily.temperature_2m_min[i])}°`));
+                forecastItem.appendChild(forecastTemp);
+
+                forecastList.appendChild(forecastItem);
+            }
+            forecastSection.appendChild(forecastList);
+            container.appendChild(forecastSection);
+        }
+
+        function renderWeatherError(container) {
+            clearElement(container);
+            const errorContainer = createElement('div', ['error-container']);
+            errorContainer.appendChild(createElement('div', ['error-icon'], '🌧️'));
+            errorContainer.appendChild(createElement('p', ['error-message'], 'Impossible de charger la météo.'));
+            const retryBtn = createElement('button', ['retry-button'], 'Réessayer');
+            retryBtn.addEventListener('click', fetchWeather);
+            errorContainer.appendChild(retryBtn);
+            container.appendChild(errorContainer);
+        }
+
+        // Transport
+        const SWISS_TRANSPORT_API = 'https://transport.opendata.ch/v1';
+
+        async function fetchTransport() {
+            const container = document.getElementById('transportContent');
+
+            try {
+                const locationsResponse = await fetch(
+                    `${SWISS_TRANSPORT_API}/locations?x=${currentPosition.lat}&y=${currentPosition.lon}&type=station`
+                );
+
+                if (!locationsResponse.ok) throw new Error('Swiss Transport API Error');
+
+                const locationsData = await locationsResponse.json();
+                const validStations = (locationsData.stations || []).filter(s => s.id !== null);
+
+                if (validStations.length === 0) {
+                    renderTransportCard(container, null, []);
+                    return;
+                }
+
+                const closestStation = validStations[0];
+                const stationDistance = calculateDistance(
+                    currentPosition.lat, currentPosition.lon,
+                    closestStation.coordinate.x, closestStation.coordinate.y
+                );
+
+                const stationboardResponse = await fetch(
+                    `${SWISS_TRANSPORT_API}/stationboard?id=${encodeURIComponent(closestStation.id)}&limit=15`
+                );
+
+                if (!stationboardResponse.ok) throw new Error('Stationboard API Error');
+
+                const stationboardData = await stationboardResponse.json();
+                const allDepartures = [];
+
+                if (stationboardData.stationboard) {
+                    stationboardData.stationboard.forEach(journey => {
+                        const now = new Date();
+                        const depTime = new Date(journey.stop.departure);
+                        const diffMs = depTime - now;
+                        const diffMins = Math.max(0, Math.round(diffMs / 60000));
+
+                        const delay = journey.stop.delay || 0;
+                        const platform = journey.stop.platform || null;
+                        const category = (journey.category || '').toUpperCase();
+
+                        let type = 'other';
+                        if (['B', 'BUS', 'NFB', 'NFO', 'KB'].includes(category)) type = 'bus';
+                        else if (['T', 'TRAM', 'M', 'METRO'].includes(category)) type = 'tram';
+                        else if (['S', 'SN', 'IR', 'IC', 'ICE', 'ICN', 'EC', 'EN', 'RE', 'R', 'RB', 'PE', 'TGV'].includes(category)) type = 'train';
+
+                        allDepartures.push({
+                            line: journey.number || journey.name || '?',
+                            destination: journey.to || 'Direction inconnue',
+                            minutes: diffMins,
+                            category, type, delay, platform
+                        });
+                    });
+                }
+
+                const stop = {
+                    id: closestStation.id,
+                    name: closestStation.name,
+                    distance: stationDistance
+                };
+
+                allDepartures.sort((a, b) => a.minutes - b.minutes);
+                renderTransportCard(container, stop, allDepartures.slice(0, 8));
+                renderDelaysCard(allDepartures);
+
+            } catch {
+                renderTransportError(container);
+            }
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3;
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+            const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            return Math.round(R * c);
+        }
+
+        function getTransportIcon(type) {
+            switch (type) {
+                case 'bus': return '🚌';
+                case 'tram': return '🚊';
+                case 'train': return '🚆';
+                default: return '🚏';
+            }
+        }
+
+        function renderTransportCard(container, stop, departures) {
+            clearElement(container);
+
+            if (!stop) {
+                const empty = createElement('div', ['empty-departures']);
+                empty.appendChild(createElement('div', ['icon'], '🚏'));
+                empty.appendChild(createElement('p', [], 'Aucun arrêt trouvé à proximité'));
+                container.appendChild(empty);
+                return;
+            }
+
+            const stopInfo = createElement('div', ['stop-info']);
+            stopInfo.appendChild(createElement('span', ['stop-distance'], `${stop.distance}m`));
+            stopInfo.appendChild(createElement('span', ['stop-name'], stop.name));
+            container.appendChild(stopInfo);
+
+            if (departures.length === 0) {
+                const empty = createElement('div', ['empty-departures']);
+                empty.appendChild(createElement('p', [], 'Aucun départ prévu'));
+                container.appendChild(empty);
+                return;
+            }
+
+            const departuresList = createElement('div', ['departures-list']);
+            departures.forEach(dep => departuresList.appendChild(createDepartureItem(dep)));
+            container.appendChild(departuresList);
+
+            const note = createElement('p', ['api-note'], '● transport.opendata.ch');
+            container.appendChild(note);
+        }
+
+        function createDepartureItem(departure) {
+            const isImminent = departure.minutes <= 3;
+            const hasDelay = departure.delay && departure.delay > 0;
+
+            const item = createElement('div', ['departure-item']);
+            if (hasDelay) item.classList.add('delayed');
+
+            item.appendChild(createElement('span', ['transport-type-icon'], getTransportIcon(departure.type)));
+
+            const lineClass = `line-${departure.line}`;
+            const badge = createElement('div', ['line-badge', departure.type, lineClass], departure.line);
+            item.appendChild(badge);
+
+            const info = createElement('div', ['departure-info']);
+            info.appendChild(createElement('div', ['departure-destination'], departure.destination));
+
+            const typeLabelContainer = createElement('div', ['departure-type-container']);
+            if (departure.platform) {
+                typeLabelContainer.appendChild(createElement('span', ['departure-platform'], `Voie ${departure.platform}`));
+            } else {
+                typeLabelContainer.appendChild(createElement('span', ['departure-type'], departure.category || departure.type.toUpperCase()));
+            }
+
+            if (hasDelay) {
+                typeLabelContainer.appendChild(createElement('span', ['delay-badge'], `+${departure.delay}'`));
+            }
+
+            info.appendChild(typeLabelContainer);
+            item.appendChild(info);
+
+            const timeDiv = createElement('div', ['departure-time']);
+            const timeValue = createElement('div', ['time-value'], `${departure.minutes}'`);
+            if (isImminent) timeValue.classList.add('imminent');
+            timeDiv.appendChild(timeValue);
+            timeDiv.appendChild(createElement('div', ['time-label'], 'min'));
+            item.appendChild(timeDiv);
+
+            return item;
+        }
+
+        function renderTransportError(container) {
+            clearElement(container);
+            const errorContainer = createElement('div', ['error-container']);
+            errorContainer.appendChild(createElement('div', ['error-icon'], '🚏'));
+            errorContainer.appendChild(createElement('p', ['error-message'], 'Impossible de charger les horaires'));
+            const retryBtn = createElement('button', ['retry-button'], 'Réessayer');
+            retryBtn.addEventListener('click', fetchTransport);
+            errorContainer.appendChild(retryBtn);
+            container.appendChild(errorContainer);
+            renderDelaysError();
+        }
+
+        // Delays Card
+        function renderDelaysCard(departures) {
+            const container = document.getElementById('delaysContent');
+            clearElement(container);
+
+            const delayedDepartures = departures.filter(d => d.delay && d.delay > 0);
+            const totalDepartures = departures.length;
+            const delayedCount = delayedDepartures.length;
+            const onTimePercentage = totalDepartures > 0
+                ? Math.round(((totalDepartures - delayedCount) / totalDepartures) * 100)
+                : 100;
+            const avgDelay = delayedCount > 0
+                ? Math.round(delayedDepartures.reduce((sum, d) => sum + d.delay, 0) / delayedCount)
+                : 0;
+
+            const summary = createElement('div', ['delays-summary']);
+            const stats = createElement('div', ['delays-stats']);
+
+            // On-time
+            const onTimeStat = createElement('div', ['delay-stat']);
+            const onTimeValue = createElement('div', ['delay-stat-value'], `${onTimePercentage}%`);
+            onTimeValue.classList.add(onTimePercentage >= 90 ? 'good' : onTimePercentage >= 70 ? 'warning' : 'bad');
+            onTimeStat.appendChild(onTimeValue);
+            onTimeStat.appendChild(createElement('div', ['delay-stat-label'], 'À l\'heure'));
+            stats.appendChild(onTimeStat);
+
+            // Delayed count
+            const delayedStat = createElement('div', ['delay-stat']);
+            const delayedValue = createElement('div', ['delay-stat-value'], delayedCount.toString());
+            delayedValue.classList.add(delayedCount === 0 ? 'good' : delayedCount <= 2 ? 'warning' : 'bad');
+            delayedStat.appendChild(delayedValue);
+            delayedStat.appendChild(createElement('div', ['delay-stat-label'], 'Retards'));
+            stats.appendChild(delayedStat);
+
+            // Avg delay
+            const avgStat = createElement('div', ['delay-stat']);
+            const avgValue = createElement('div', ['delay-stat-value'], avgDelay > 0 ? `${avgDelay}'` : '-');
+            avgValue.classList.add(avgDelay === 0 ? 'good' : avgDelay <= 3 ? 'warning' : 'bad');
+            avgStat.appendChild(avgValue);
+            avgStat.appendChild(createElement('div', ['delay-stat-label'], 'Moy. retard'));
+            stats.appendChild(avgStat);
+
+            summary.appendChild(stats);
+
+            if (delayedDepartures.length > 0) {
+                const delayedLines = createElement('div', ['delayed-lines']);
+                const sortedDelayed = [...delayedDepartures].sort((a, b) => b.delay - a.delay).slice(0, 5);
+
+                sortedDelayed.forEach(dep => {
+                    const item = createElement('div', ['delayed-line-item']);
+                    const info = createElement('div', ['delayed-line-info']);
+
+                    const lineClass = `line-${dep.line}`;
+                    info.appendChild(createElement('div', ['delayed-line-badge', 'line-badge', dep.type, lineClass], dep.line));
+                    info.appendChild(createElement('span', ['delayed-line-destination'], dep.destination));
+                    item.appendChild(info);
+                    item.appendChild(createElement('span', ['delayed-line-delay'], `+${dep.delay}'`));
+                    delayedLines.appendChild(item);
+                });
+
+                summary.appendChild(delayedLines);
+            } else {
+                const noDelays = createElement('div', ['no-delays']);
+                noDelays.appendChild(createElement('div', ['icon'], '✅'));
+                noDelays.appendChild(createElement('div', ['message'], 'Aucun retard signalé'));
+                summary.appendChild(noDelays);
+            }
+
+            container.appendChild(summary);
+        }
+
+        function renderDelaysError() {
+            const container = document.getElementById('delaysContent');
+            clearElement(container);
+            const errorContainer = createElement('div', ['error-container']);
+            errorContainer.appendChild(createElement('div', ['error-icon'], '⚠️'));
+            errorContainer.appendChild(createElement('p', ['error-message'], 'Données indisponibles'));
+            container.appendChild(errorContainer);
+        }
+
+        // Exchange Rates
+        async function fetchExchangeRates() {
+            const container = document.getElementById('exchangeContent');
+
+            try {
+                const response = await fetch('https://api.frankfurter.app/latest?from=CHF&to=EUR,USD');
+                const data = await response.json();
+
+                const rates = {
+                    EUR_to_CHF: 1 / data.rates.EUR,
+                    CHF_to_EUR: data.rates.EUR,
+                    USD_to_CHF: 1 / data.rates.USD,
+                    CHF_to_USD: data.rates.USD
+                };
+
+                renderExchangeRates(container, rates);
+
+            } catch {
+                renderExchangeError(container);
+            }
+        }
+
+        function renderExchangeRates(container, rates) {
+            clearElement(container);
+
+            const ratesDiv = createElement('div', ['exchange-rates']);
+
+            // EUR
+            const eurItem = createElement('div', ['exchange-rate-item']);
+            const eurCurrency = createElement('div', ['exchange-currency']);
+            eurCurrency.appendChild(createElement('span', ['currency-flag'], '🇪🇺'));
+            const eurInfo = createElement('div', ['currency-info']);
+            eurInfo.appendChild(createElement('span', ['currency-code'], 'EUR'));
+            eurInfo.appendChild(createElement('span', ['currency-name'], 'Euro'));
+            eurCurrency.appendChild(eurInfo);
+            eurItem.appendChild(eurCurrency);
+
+            const eurValues = createElement('div', ['exchange-values']);
+            const eurToCHF = createElement('div', ['exchange-value']);
+            eurToCHF.appendChild(createElement('span', ['rate-value'], rates.EUR_to_CHF.toFixed(4)));
+            eurToCHF.appendChild(createElement('span', ['rate-label'], '1 EUR → CHF'));
+            eurValues.appendChild(eurToCHF);
+
+            const chfToEUR = createElement('div', ['exchange-value']);
+            chfToEUR.appendChild(createElement('span', ['rate-value'], rates.CHF_to_EUR.toFixed(4)));
+            chfToEUR.appendChild(createElement('span', ['rate-label'], '1 CHF → EUR'));
+            eurValues.appendChild(chfToEUR);
+
+            eurItem.appendChild(eurValues);
+            ratesDiv.appendChild(eurItem);
+
+            // USD
+            const usdItem = createElement('div', ['exchange-rate-item']);
+            const usdCurrency = createElement('div', ['exchange-currency']);
+            usdCurrency.appendChild(createElement('span', ['currency-flag'], '🇺🇸'));
+            const usdInfo = createElement('div', ['currency-info']);
+            usdInfo.appendChild(createElement('span', ['currency-code'], 'USD'));
+            usdInfo.appendChild(createElement('span', ['currency-name'], 'Dollar US'));
+            usdCurrency.appendChild(usdInfo);
+            usdItem.appendChild(usdCurrency);
+
+            const usdValues = createElement('div', ['exchange-values']);
+            const usdToCHF = createElement('div', ['exchange-value']);
+            usdToCHF.appendChild(createElement('span', ['rate-value'], rates.USD_to_CHF.toFixed(4)));
+            usdToCHF.appendChild(createElement('span', ['rate-label'], '1 USD → CHF'));
+            usdValues.appendChild(usdToCHF);
+
+            const chfToUSD = createElement('div', ['exchange-value']);
+            chfToUSD.appendChild(createElement('span', ['rate-value'], rates.CHF_to_USD.toFixed(4)));
+            chfToUSD.appendChild(createElement('span', ['rate-label'], '1 CHF → USD'));
+            usdValues.appendChild(chfToUSD);
+
+            usdItem.appendChild(usdValues);
+            ratesDiv.appendChild(usdItem);
+
+            container.appendChild(ratesDiv);
+
+            const source = createElement('p', ['exchange-source'], '● frankfurter.app (ECB)');
+            container.appendChild(source);
+        }
+
+        function renderExchangeError(container) {
+            clearElement(container);
+            const errorContainer = createElement('div', ['error-container']);
+            errorContainer.appendChild(createElement('div', ['error-icon'], '💱'));
+            errorContainer.appendChild(createElement('p', ['error-message'], 'Impossible de charger les taux'));
+            const retryBtn = createElement('button', ['retry-button'], 'Réessayer');
+            retryBtn.addEventListener('click', fetchExchangeRates);
+            errorContainer.appendChild(retryBtn);
+            container.appendChild(errorContainer);
+        }
+    </script>
+</body>
+</html>
